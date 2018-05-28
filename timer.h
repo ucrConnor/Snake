@@ -17,11 +17,10 @@ volatile unsigned char TimerFlag = 0; // TimerISR() sets this to 1. C programmer
 unsigned long _avr_timer_M = 1; // Start count from here, down to 0. Default 1 ms.
 unsigned long _avr_timer_cntcurr = 0; // Current internal count of 1ms ticks
 
-unsigned short vert1 = 0;
-unsigned short horiz1 = 0;
-unsigned short vert2 = 0;
-unsigned short horiz2 = 0;
 
+
+unsigned short vert[] = {0,0};
+unsigned short horiz[] = {0,0};
 void read_joystick(){
 	ADMUX = 0x00;
 
@@ -33,7 +32,7 @@ void read_joystick(){
 
 	//Clear ADIF 
 	ADCSRA|=(1<<ADIF);
-	vert1 = ADC;
+	vert[0] = ADC;
 	
 	ADMUX = 0x01;
 
@@ -45,7 +44,7 @@ void read_joystick(){
 
 	//Clear ADIF
 	ADCSRA|=(1<<ADIF);
-	horiz1 = ADC;
+	horiz[0] = ADC;
 	
 		ADMUX = 0x02;
 
@@ -57,19 +56,19 @@ void read_joystick(){
 
 		//Clear ADIF
 		ADCSRA|=(1<<ADIF);
-		vert2 = ADC;
+		vert[1] = ADC;
 		
-				ADMUX = 0x03;
+		ADMUX = 0x03;
 
-				//Start Single conversion
-				ADCSRA|=(1<<ADSC);
+		//Start Single conversion
+		ADCSRA|=(1<<ADSC);
 
-				//Wait for conversion to complete
-				while(!(ADCSRA & (1<<ADIF)));
+		//Wait for conversion to complete
+		while(!(ADCSRA & (1<<ADIF)));
 
-				//Clear ADIF
-				ADCSRA|=(1<<ADIF);
-				horiz2 = ADC;
+		//Clear ADIF
+		ADCSRA|=(1<<ADIF);
+		horiz[1] = ADC;
 		
 		
 }
