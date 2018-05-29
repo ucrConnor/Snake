@@ -7,12 +7,14 @@
 #ifndef	TIMER_H
 #define TIMER_H
 
+#define MAX_ADC_VALUE 1024
 #include <avr/interrupt.h>
 
 
 volatile unsigned char TimerFlag = 0; // TimerISR() sets this to 1. C programmer should clear to 0.
 
 // Internal variables for mapping AVR's ISR to our cleaner TimerISR model.
+
 
 unsigned long _avr_timer_M = 1; // Start count from here, down to 0. Default 1 ms.
 unsigned long _avr_timer_cntcurr = 0; // Current internal count of 1ms ticks
