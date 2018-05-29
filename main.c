@@ -24,7 +24,7 @@
 #define HORIZ_IN_DEADZONE(player) (horiz[player] <= UPPER_THRESHOLD && horiz[player] >= LOWER_THRESHOLD)
 
 enum Direction{Up,Down,Left,Right,None};
-enum States{Start, Init, };
+enum States{Start, Init, Title_Screen, Move, Render} state;
 enum Field_Contents{Empty, Food, Obstacle, Player1, Player2};
 	
 struct Segment{
@@ -174,6 +174,36 @@ void move_players(){
 	
 }
 
+void Tick(){
+	switch (state){
+		case Start: state = Title_Screen;
+			break;
+		case Init: state = Move;
+			break;
+		case Title_Screen: state = Init;
+			break;
+		case Move: state = Render;
+			break;
+		case Render: state = Move;
+			break;
+	}
+	
+	switch (state){
+		case Start:
+			break;
+		case Init: draw_border();
+				   player_init();
+				   field_init();
+			break;
+		case Title_Screen:
+			break;
+		case Move: move_players();
+			break;
+		case Render: render_field();
+					 nokia_lcd_render();
+			break;
+	}
+}
 int main(void)
 {
     /* Replace with your application code */
@@ -219,7 +249,7 @@ int main(void)
     {
 
 		if(elapsedTime = 100){
-			
+			Tick();
 			elapsedTime = 0;
 		}
 		while(!TimerFlag)
