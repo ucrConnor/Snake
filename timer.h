@@ -72,7 +72,7 @@ void read_joystick(){
 		ADCSRA|=(1<<ADIF);
 		horiz[1] = ADC;
 		
-		
+
 }
 void ADC_init() {
 	ADMUX=(1<<REFS0);                         // For Aref=AVcc;

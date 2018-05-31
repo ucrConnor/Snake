@@ -7,6 +7,8 @@
 
 #include <avr/io.h>
 #include <string.h>
+#include <stdlib.h>     
+#include <time.h>
 
 #include "timer.h"
 #include "nokia5110.h"
@@ -16,17 +18,18 @@
 #define FIELD_WIDTH 84/SEG_WIDTH
 #define START_LENGTH 4
 #define MAX_LENGTH 10
+#define START_SPEED 80
 // #define Player1 0
 // #define PLAYER2 1
 #define UPPER_THRESHOLD 600 //Defines the deadzone for the joystick
-#define LOWER_THRESHOLD 400 
+#define LOWER_THRESHOLD 480 
 
 #define VERT_IN_DEADZONE(player) (vert[player] <= UPPER_THRESHOLD && vert[player] >= LOWER_THRESHOLD)
 #define HORIZ_IN_DEADZONE(player) (horiz[player] <= UPPER_THRESHOLD && horiz[player] >= LOWER_THRESHOLD)
 
 enum Direction{Up,Down,Left,Right,None};
-enum States{Start, Init, Title_Screen, Move, Render, Check_Collisions, Game_Over} state;
-enum Field_Contents{Empty, Food, Obstacle, Player1, Player2};
+enum States{Start, Init, Title_Screen, Move, Render, Check_Collisions, Game_Over, Eat} state;
+enum Field_Contents{Empty, Food, Obstacle, Player1, Player2, Player};
 enum bool{False, True};
 struct Segment{
 	//indicies of the segments position in the field
@@ -38,6 +41,7 @@ struct Snake{
 	unsigned char length;
 	enum Direction dir;
 	enum bool collided;
+	unsigned char score;
 	struct Segment seg[MAX_LENGTH];
 };
 
@@ -52,21 +56,63 @@ struct Cell{
 
 
 struct Snake players[2];
-
+struct Segment food;
 unsigned char select1 = 0;
 unsigned char select2 = 0;
-
+unsigned char speed = 80;
 unsigned char num_players = 1;
 unsigned char game_over_timer = 0;
 struct Cell pos(unsigned char p,unsigned char s) {
 	return field[players[p].seg[s].x][players[p].seg[s].y];
 }
 
+void generate_food(){
+	unsigned char food_x;
+	unsigned char food_y;
+	
+	do{
+		food_x = (rand() % (FIELD_WIDTH - 2) + 1);
+		food_y = (rand() % (FIELD_HEIGHT - 2) + 1);
+	}while(field[food_x][food_y].content == Player);
+	field[food_x][food_y].content = Food;
+	food.x = food_x;
+	food.y = food_y;
+}
+void add_segment(unsigned char player){
+	unsigned char length = players[player].length;
+	enum Direction last_dir = pos(player, length - 1).dir;
+	++players[player].length;
+	players[player].seg[length].x =  players[player].seg[length - 1].x;
+	players[player].seg[length].y =  players[player].seg[length - 1].y;
+	if(last_dir == Right)
+		--players[player].seg[length].x;
+	else if(last_dir == Left)
+		++players[player].seg[length].x;
+	else if(last_dir == Up)
+		--players[player].seg[length].y;
+	else
+		++players[player].seg[length].y;
+	
+	field[players[player].seg[length].x][players[player].seg[length].y].dir = last_dir;
+	render_field();
+		
+}
+void eat(unsigned char player){
+	generate_food();
+	players[player].score++;
+	if(players[player].length < MAX_LENGTH)
+		add_segment(player);
+	if(speed > 10)
+		speed -= 5;
+	
+	return;
+}
 void player_init(){
 	for (unsigned char i = 0; i < num_players; ++i){
 		players[i].dir = Right;
 		players[i].length = START_LENGTH;
 		players[i].collided = False;
+		players[i].score = 0;
 		for (unsigned char j = 0; j < START_LENGTH && j < MAX_LENGTH; ++j){
 			players[i].seg[j].x = 1 + START_LENGTH - j; /* first segment starts 1 + len to the right and build to the left
 												  so the last segment is 1 cell to the right of the wall*/
@@ -89,6 +135,7 @@ void field_init(){
 			field[players[i].seg[j].x][players[i].seg[j].y].content = i == 0 ? Player1 : Player2;														
 		}
 	}
+	generate_food();
 }
 
 void draw_snake_segment(unsigned char x, unsigned char y){
@@ -110,6 +157,8 @@ void render_field(){
 		for (unsigned char j = 1; j < FIELD_HEIGHT - 1; ++j)
 			if(field[i][j].content == Player1 || field[i][j].content == Player2)
 				clear_segment(i,j);
+			else if(field[i][j].content == Food)
+				draw_snake_segment(i,j);
 			else
 				clear_segment(i,j);
 	}
@@ -195,15 +244,22 @@ void render_title_screen(){
 	nokia_lcd_render();
 }
 enum Field_Contents determine_collisions(){
+	unsigned char opposing_player;
 	for (unsigned char i = 0; i < num_players; ++i){		
 		//if(pos(i,0).content == Obstacle)
+		opposing_player = i == 0 ? 1 : 0;
 		if((players[i].seg[0].x == 0 || players[i].seg[0].x == FIELD_WIDTH - 1)
 		 || (players[i].seg[0].y == 0 || players[i].seg[0].y == FIELD_HEIGHT - 1)){
 			players[i].collided = True;
-				return Obstacle;
 			}
-			
-			
+		if(players[i].seg[0].x == food.x && players[i].seg[0].y == food.y){
+			eat(i);
+		}
+		for(unsigned char j = 0; j < players[i].length; ++j){
+			if((players[i].seg[0].x == players[opposing_player].seg[j].x) && (players[i].seg[0].y == players[opposing_player].seg[j].y)){
+				players[i].collided = True;
+			}	
+		}
 	}	
 	if(players[0].collided == True || players[1].collided == True)
 		return Obstacle;
@@ -216,6 +272,8 @@ void game_over(){
 	nokia_lcd_write_string("Game Over Man", 1);
 	nokia_lcd_render();
 }
+
+
 void Tick(){
 	select1 = !(PINA & (1 << PINA7));
 	select2 = !(PINA & (1 << PINA6));
@@ -242,14 +300,17 @@ void Tick(){
 	}
 	
 	switch (state){
-		case Start:
+		case Start: num_players = 1;
 			break;
 		case Init: nokia_lcd_clear();
+				   speed = START_SPEED;
 				   draw_border();
 				   player_init();
 				   field_init();
 			break;
 		case Title_Screen: render_title_screen();
+							if(select2)
+								num_players = 2;
 			break;
 		case Move: move_players();
 			break;
@@ -270,14 +331,14 @@ int main(void)
 	DDRA = 0x00; PORTA = 0xFF;
 	DDRC = 0xFF; PORTC = 0x00;
 	unsigned short elapsedTime = 0;
-	unsigned short period = 10;
+	unsigned short period = 5;
 	ADC_init();
 	TimerSet(period);
 	TimerOn();
-	
+	srand (vert[1]);
 	nokia_lcd_init();
 	
- char str1[10];
+ //char str1[10];
  char ch;
     while (1) 
     {
@@ -296,7 +357,9 @@ int main(void)
 // 	nokia_lcd_set_cursor(0,0);
 // 	nokia_lcd_write_char(ch,1);
 // 	nokia_lcd_render();
-		if(elapsedTime == 100){
+		players[0].dir = determine_direction(0);
+		players[1].dir = determine_direction(1);
+		if(elapsedTime >= speed){
 			Tick();
 			elapsedTime = 0;
  		}
