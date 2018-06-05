@@ -9,7 +9,7 @@
 #include <string.h>
 #include <stdlib.h>     
 #include <time.h>
-
+#include <limits.h>
 #include "timer.h"
 #include "nokia5110.h"
 
@@ -21,8 +21,8 @@
 #define START_SPEED 80
 // #define Player1 0
 // #define PLAYER2 1
-#define UPPER_THRESHOLD 600 //Defines the deadzone for the joystick
-#define LOWER_THRESHOLD 480 
+#define UPPER_THRESHOLD 700 //Defines the deadzone for the joystick
+#define LOWER_THRESHOLD 400 
 
 #define VERT_IN_DEADZONE(player) (vert[player] <= UPPER_THRESHOLD && vert[player] >= LOWER_THRESHOLD)
 #define HORIZ_IN_DEADZONE(player) (horiz[player] <= UPPER_THRESHOLD && horiz[player] >= LOWER_THRESHOLD)
@@ -62,10 +62,17 @@ unsigned char select2 = 0;
 unsigned char speed = 80;
 unsigned char num_players = 1;
 unsigned char game_over_timer = 0;
+unsigned short seed = 0;
 struct Cell pos(unsigned char p,unsigned char s) {
 	return field[players[p].seg[s].x][players[p].seg[s].y];
 }
 
+void update_seed(){
+	if(seed < SHRT_MAX)
+		++seed;
+	else
+		seed = rand() % SHRT_MAX;
+}
 void generate_food(){
 	unsigned char food_x;
 	unsigned char food_y;
@@ -163,7 +170,7 @@ void render_field(){
 				clear_segment(i,j);
 	}
 	for (unsigned char i = 0; i < num_players; ++i){
-		for (unsigned char j = 0; players[i].length && j < MAX_LENGTH; ++j){
+		for (unsigned char j = 0; j < players[i].length && j < MAX_LENGTH; ++j){
 			draw_snake_segment(players[i].seg[j].x,players[i].seg[j].y);	
 		}
 	}
@@ -240,7 +247,9 @@ void move_players(){
 
 void render_title_screen(){
 	nokia_lcd_clear();
+	
 	nokia_lcd_write_string("Press sel to begin", 1);
+	
 	nokia_lcd_render();
 }
 enum Field_Contents determine_collisions(){
@@ -304,6 +313,7 @@ void Tick(){
 			break;
 		case Init: nokia_lcd_clear();
 				   speed = START_SPEED;
+				   srand(seed);
 				   draw_border();
 				   player_init();
 				   field_init();
@@ -335,11 +345,18 @@ int main(void)
 	ADC_init();
 	TimerSet(period);
 	TimerOn();
-	srand (vert[1]);
+	srand (seed);
 	nokia_lcd_init();
 	
+	
+	
+	
+// char str1[6];
+// char str2[6];
+// char str3[6];
+// char str4[6];
  //char str1[10];
- char ch;
+ //char ch;
     while (1) 
     {
 //nokia_lcd_clear();
@@ -357,8 +374,8 @@ int main(void)
 // 	nokia_lcd_set_cursor(0,0);
 // 	nokia_lcd_write_char(ch,1);
 // 	nokia_lcd_render();
-		players[0].dir = determine_direction(0);
-		players[1].dir = determine_direction(1);
+// 		players[0].dir = determine_direction(0);
+// 		players[1].dir = determine_direction(1);
 		if(elapsedTime >= speed){
 			Tick();
 			elapsedTime = 0;
@@ -368,7 +385,30 @@ int main(void)
 		elapsedTime += period;
 
 
-		
+// 		 nokia_lcd_clear();
+// 		 nokia_lcd_set_cursor(0,0);
+// 		 nokia_lcd_write_string("Vert1: ",1);
+// 		 
+// 		 sprintf(str1, "%d", vert[0]);
+// 		 nokia_lcd_write_string(str1,1);
+// 		 
+// 		 sprintf(str2, "%d", horiz[0]);
+// 		 nokia_lcd_set_cursor(0,10);
+// 		 nokia_lcd_write_string("Horiz1: ",1);
+// 		 nokia_lcd_write_string(str2,1);
+// 		 
+// 		 sprintf(str3, "%d", vert[1]);
+// 		 nokia_lcd_set_cursor(0,20);
+// 		 nokia_lcd_write_string("Vert2: ",1);
+// 		 nokia_lcd_write_string(str3,1);
+// 		 
+// 		 sprintf(str4, "%d", horiz[1]);
+// 		 nokia_lcd_set_cursor(0,30);
+// 		 nokia_lcd_write_string("Horiz2: ",1);
+// 		 nokia_lcd_write_string(str4,1);
+// 		 
+// 		 
+// 		 nokia_lcd_render();
     }
 }
 
