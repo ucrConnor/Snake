@@ -14,13 +14,13 @@
 #include "nokia5110.h"
 
 #define SEG_WIDTH 2 // One side of a snake segment
-#define FIELD_HEIGHT 48/SEG_WIDTH
-#define FIELD_WIDTH 84/SEG_WIDTH
+#define PIXEL_WIDTH 84
+#define PIXEL_HEIGHT 48
+#define FIELD_HEIGHT PIXEL_HEIGHT/SEG_WIDTH
+#define FIELD_WIDTH PIXEL_WIDTH/SEG_WIDTH
 #define START_LENGTH 4
 #define MAX_LENGTH 10
 #define START_SPEED 80
-// #define Player1 0
-// #define PLAYER2 1
 #define UPPER_THRESHOLD 700 //Defines the deadzone for the joystick
 #define LOWER_THRESHOLD 400 
 
@@ -28,7 +28,7 @@
 #define HORIZ_IN_DEADZONE(player) (horiz[player] <= UPPER_THRESHOLD && horiz[player] >= LOWER_THRESHOLD)
 
 enum Direction{Up,Down,Left,Right,None};
-enum States{Start, Init, Title_Screen, Move, Render, Check_Collisions, Game_Over, Eat} state;
+enum States{Start, Init, Title_Screen, Move, Render, Check_Collisions, Game_Over, Eat, Player_Join} state;
 enum Field_Contents{Empty, Food, Obstacle, Player1, Player2, Player};
 enum bool{False, True};
 struct Segment{
@@ -248,7 +248,58 @@ void move_players(){
 void render_title_screen(){
 	nokia_lcd_clear();
 	
-	nokia_lcd_write_string("Press sel to begin", 1);
+	//Top-Bot Border
+	unsigned char start_x = (PIXEL_WIDTH/4) - 9;
+	for(unsigned char i = 0 ; i < 62 ; ++i){
+		nokia_lcd_set_pixel(start_x + i,1,1);
+		nokia_lcd_set_pixel(start_x + i,2,1);
+		
+		nokia_lcd_set_pixel(start_x + i,19,1);
+		nokia_lcd_set_pixel(start_x + i,20,1);
+				
+	}
+	//Right-Left Border
+	for(unsigned char i = 3 ; i < 19 ; ++i){
+		nokia_lcd_set_pixel(start_x,i,1);
+		nokia_lcd_set_pixel(start_x + 1,i,1);
+			
+		nokia_lcd_set_pixel(start_x + 60,i,1);
+		nokia_lcd_set_pixel(start_x + 61,i,1);
+			
+	}
+	nokia_lcd_set_cursor((PIXEL_WIDTH/4) - 5,4);
+	nokia_lcd_write_string("Snake",2);
+	
+	nokia_lcd_set_cursor(0,PIXEL_HEIGHT - 24);
+	nokia_lcd_write_string("Player1",1);
+	nokia_lcd_set_cursor(0,PIXEL_HEIGHT - 16);
+	nokia_lcd_write_string("Push to",1);
+	nokia_lcd_set_cursor(0,PIXEL_HEIGHT - 8);
+	nokia_lcd_write_string("Start",1);
+	
+	nokia_lcd_set_cursor(PIXEL_WIDTH - 41,PIXEL_HEIGHT - 24);
+	nokia_lcd_write_string("Player2",1);
+	nokia_lcd_set_cursor(PIXEL_WIDTH - 41,PIXEL_HEIGHT - 16);
+	nokia_lcd_write_string("Push to",1);
+	nokia_lcd_set_cursor(PIXEL_WIDTH - 41,PIXEL_HEIGHT - 8);
+	if (num_players == 2){
+		nokia_lcd_set_cursor(PIXEL_WIDTH - 41,PIXEL_HEIGHT - 24);
+		nokia_lcd_write_string("Player2",1);
+		nokia_lcd_set_cursor(PIXEL_WIDTH - 41,PIXEL_HEIGHT - 16);
+		nokia_lcd_write_string("Push to",1);
+		nokia_lcd_set_cursor(PIXEL_WIDTH - 41,PIXEL_HEIGHT - 8);
+		nokia_lcd_write_string("Leave",1);
+	}
+	else{
+		nokia_lcd_set_cursor(PIXEL_WIDTH - 41,PIXEL_HEIGHT - 24);
+		nokia_lcd_write_string("Player2",1);
+		nokia_lcd_set_cursor(PIXEL_WIDTH - 41,PIXEL_HEIGHT - 16);
+		nokia_lcd_write_string("Push to",1);
+		nokia_lcd_set_cursor(PIXEL_WIDTH - 41,PIXEL_HEIGHT - 8);
+		nokia_lcd_write_string("Join",1);
+	}
+
+	
 	
 	nokia_lcd_render();
 }
@@ -278,12 +329,36 @@ enum Field_Contents determine_collisions(){
 
 void game_over(){
 	nokia_lcd_clear();
-	nokia_lcd_write_string("Game Over Man", 1);
+	char buf[4];
+
+	unsigned char start_x = (PIXEL_WIDTH/4) - 9;
+	nokia_lcd_set_cursor(start_x,0);
+	nokia_lcd_write_string("Game Over",1);
+	if (num_players == 1){
+
+		nokia_lcd_set_cursor(start_x, 30);
+		nokia_lcd_write_string("Score: ",1);
+		sprintf(buf, "%d", players[0].score);
+		nokia_lcd_write_string(buf,1);
+	}
+	else{
+		nokia_lcd_set_cursor(0, 30);
+		if(players[0].collided == False && players[1].collided == True)
+			nokia_lcd_write_string("Player 1 Wins!",1);
+		else if (players[0].collided == True && players[1].collided == False)
+			nokia_lcd_write_string("Player 2 Wins!",1);
+		else{
+			nokia_lcd_set_cursor(0, 30);
+			nokia_lcd_write_string("No One Wins!!",1);
+		}
+		
+	}
 	nokia_lcd_render();
 }
 
 
 void Tick(){
+	update_seed();
 	select1 = !(PINA & (1 << PINA7));
 	select2 = !(PINA & (1 << PINA6));
 	enum Field_Contents collision = Empty;
@@ -292,7 +367,13 @@ void Tick(){
 			break;
 		case Init: state = Render;
 			break;
-		case Title_Screen: state = select1 ? Init : Title_Screen;
+		case Title_Screen: 	if(!select2)
+								state = select1 ? Init : Title_Screen;
+							else{
+								num_players = num_players == 1 ? 2 : 1;
+								state = Player_Join;
+							}
+								
 			break;
 		case Move: state = Check_Collisions;
 			break;
@@ -305,6 +386,8 @@ void Tick(){
 									state = Render;
 			break;
 		case Game_Over: state = select1 ? Start : Game_Over;
+			break;
+		case Player_Join: state = select2 ? Player_Join : Title_Screen; 
 			break;
 	}
 	
@@ -319,8 +402,10 @@ void Tick(){
 				   field_init();
 			break;
 		case Title_Screen: render_title_screen();
-							if(select2)
+							if(select2 && num_players == 1)
 								num_players = 2;
+							else if(select2 && num_players == 2)
+								num_players = 1;
 			break;
 		case Move: move_players();
 			break;
