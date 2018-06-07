@@ -11,7 +11,7 @@
 #include <time.h>
 #include <limits.h>
 #include "timer.h"
-#include "nokia5110.h"
+#include "lcd.h"
 
 #define SEG_WIDTH 2 // One side of a snake segment
 #define PIXEL_WIDTH 84
@@ -20,7 +20,7 @@
 #define FIELD_WIDTH PIXEL_WIDTH/SEG_WIDTH
 #define START_LENGTH 4
 #define MAX_LENGTH 40
-#define START_SPEED 70
+#define START_SPEED 60
 #define UPPER_THRESHOLD 700 //Defines the deadzone for the joystick
 #define LOWER_THRESHOLD 400 
 
@@ -149,14 +149,14 @@ void field_init(){
 void draw_snake_segment(unsigned char x, unsigned char y){
 	for( unsigned char i = 0; i < SEG_WIDTH; ++i){
 		for( unsigned char j = 0; j < SEG_WIDTH; ++j){
-			nokia_lcd_set_pixel(SEG_WIDTH * x + i, SEG_WIDTH * y + j, 1);
+			setPixel(SEG_WIDTH * x + i, SEG_WIDTH * y + j, 1);
 		}	
 	}
 }
 void clear_segment(unsigned char x, unsigned char y){
 	for( unsigned char i = 0; i < SEG_WIDTH; ++i){
 		for( unsigned char j = 0; j < SEG_WIDTH; ++j){
-			nokia_lcd_set_pixel(SEG_WIDTH * x + i, SEG_WIDTH * y + j, 0);
+			setPixel(SEG_WIDTH * x + i, SEG_WIDTH * y + j, 0);
 		}
 	}
 }
@@ -247,62 +247,52 @@ void move_players(){
 }
 
 void render_title_screen(){
-	nokia_lcd_clear();
+	clearDisplay();
 	
 	//Top-Bot Border
 	unsigned char start_x = (PIXEL_WIDTH/4) - 9;
 	for(unsigned char i = 0 ; i < 62 ; ++i){
-		nokia_lcd_set_pixel(start_x + i,1,1);
-		nokia_lcd_set_pixel(start_x + i,2,1);
+		setPixel(start_x + i,1,1);
+		setPixel(start_x + i,2,1);
 		
-		nokia_lcd_set_pixel(start_x + i,19,1);
-		nokia_lcd_set_pixel(start_x + i,20,1);
+		setPixel(start_x + i,19,1);
+		setPixel(start_x + i,20,1);
 				
 	}
 	//Right-Left Border
 	for(unsigned char i = 3 ; i < 19 ; ++i){
-		nokia_lcd_set_pixel(start_x,i,1);
-		nokia_lcd_set_pixel(start_x + 1,i,1);
+		setPixel(start_x,i,1);
+		setPixel(start_x + 1,i,1);
 			
-		nokia_lcd_set_pixel(start_x + 60,i,1);
-		nokia_lcd_set_pixel(start_x + 61,i,1);
+		setPixel(start_x + 60,i,1);
+		setPixel(start_x + 61,i,1);
 			
 	}
-	nokia_lcd_set_cursor((PIXEL_WIDTH/4) - 5,4);
-	nokia_lcd_write_string("Snake",2);
+	gotoXY((PIXEL_WIDTH/4) - 5,4);
+	setStr("Snake",(PIXEL_WIDTH/4) - 5,4,1);
 	
-	nokia_lcd_set_cursor(0,PIXEL_HEIGHT - 24);
-	nokia_lcd_write_string("Player1",1);
-	nokia_lcd_set_cursor(0,PIXEL_HEIGHT - 16);
-	nokia_lcd_write_string("Push to",1);
-	nokia_lcd_set_cursor(0,PIXEL_HEIGHT - 8);
-	nokia_lcd_write_string("Start",1);
+	gotoXY(0,PIXEL_HEIGHT - 24);
+	setStr("Player1",0,PIXEL_HEIGHT - 24,1);
+	gotoXY(0,PIXEL_HEIGHT - 16);
+	setStr("Push to",0,PIXEL_HEIGHT - 16,1);
+	gotoXY(0,PIXEL_HEIGHT - 8);
+	setStr("Start",0,PIXEL_HEIGHT - 8,1);
 	
-	nokia_lcd_set_cursor(PIXEL_WIDTH - 41,PIXEL_HEIGHT - 24);
-	nokia_lcd_write_string("Player2",1);
-	nokia_lcd_set_cursor(PIXEL_WIDTH - 41,PIXEL_HEIGHT - 16);
-	nokia_lcd_write_string("Push to",1);
-	nokia_lcd_set_cursor(PIXEL_WIDTH - 41,PIXEL_HEIGHT - 8);
+	gotoXY(PIXEL_WIDTH - 41,PIXEL_HEIGHT - 24);
+	setStr("Player2",PIXEL_WIDTH - 41,PIXEL_HEIGHT - 24,1);
+	gotoXY(PIXEL_WIDTH - 41,PIXEL_HEIGHT - 16);
+	setStr("Push to",PIXEL_WIDTH - 41,PIXEL_HEIGHT - 16,1);
+	gotoXY(PIXEL_WIDTH - 41,PIXEL_HEIGHT - 8);
 	if (num_players == 2){
-		nokia_lcd_set_cursor(PIXEL_WIDTH - 41,PIXEL_HEIGHT - 24);
-		nokia_lcd_write_string("Player2",1);
-		nokia_lcd_set_cursor(PIXEL_WIDTH - 41,PIXEL_HEIGHT - 16);
-		nokia_lcd_write_string("Push to",1);
-		nokia_lcd_set_cursor(PIXEL_WIDTH - 41,PIXEL_HEIGHT - 8);
-		nokia_lcd_write_string("Leave",1);
+		setStr("Leave",PIXEL_WIDTH - 41,PIXEL_HEIGHT - 8,1);
 	}
 	else{
-		nokia_lcd_set_cursor(PIXEL_WIDTH - 41,PIXEL_HEIGHT - 24);
-		nokia_lcd_write_string("Player2",1);
-		nokia_lcd_set_cursor(PIXEL_WIDTH - 41,PIXEL_HEIGHT - 16);
-		nokia_lcd_write_string("Push to",1);
-		nokia_lcd_set_cursor(PIXEL_WIDTH - 41,PIXEL_HEIGHT - 8);
-		nokia_lcd_write_string("Join",1);
+		setStr("Join",PIXEL_WIDTH - 41,PIXEL_HEIGHT - 8,1);
 	}
 
 	
 	
-	nokia_lcd_render();
+	updateDisplay();
 }
 enum Field_Contents determine_collisions(){
 	unsigned char opposing_player;
@@ -338,32 +328,32 @@ enum Field_Contents determine_collisions(){
 } 
 
 void game_over(){
-	nokia_lcd_clear();
+	clearDisplay();
 	char buf[4];
 
 	unsigned char start_x = (PIXEL_WIDTH/4) - 9;
-	nokia_lcd_set_cursor(start_x,0);
-	nokia_lcd_write_string("Game Over",1);
+	gotoXY(start_x,0);
+	setStr("Game Over", start_x, 0,1);
 	if (num_players == 1){
 
-		nokia_lcd_set_cursor(start_x, 30);
-		nokia_lcd_write_string("Score: ",1);
+		gotoXY(start_x, 30);
+		setStr("Score: ", start_x, 30, 1);
 		sprintf(buf, "%d", players[0].score);
-		nokia_lcd_write_string(buf,1);
+		setStr(buf,start_x + 40, 30, 1);
 	}
 	else{
-		nokia_lcd_set_cursor(0, 30);
+		gotoXY(0, 30);
 		if(players[0].collided == False && players[1].collided == True)
-			nokia_lcd_write_string("Player 1 Wins!",1);
+			setStr("Player 1 Wins!", 0, 30, 1);
 		else if (players[0].collided == True && players[1].collided == False)
-			nokia_lcd_write_string("Player 2 Wins!",1);
+			setStr("Player 2 Wins!", 0, 30, 1);
 		else{
-			nokia_lcd_set_cursor(0, 30);
-			nokia_lcd_write_string("No One Wins!!",1);
+			gotoXY(0, 30);
+			setStr("No One Wins!!",0, 30, 1);
 		}
 		
 	}
-	nokia_lcd_render();
+	updateDisplay();
 }
 
 
@@ -406,7 +396,7 @@ void Tick(){
 					game_over_timer = 0;
 					speed = START_SPEED;
 			break;
-		case Init: nokia_lcd_clear();
+		case Init: clearDisplay();
 				   speed = START_SPEED;
 				   srand(seed);
 				   draw_border();
@@ -422,7 +412,7 @@ void Tick(){
 		case Move: move_players();
 			break;
 		case Render: render_field();
-					 nokia_lcd_render();
+					 updateDisplay();
 			break;
 		case Check_Collisions:
 			break;
@@ -443,7 +433,7 @@ int main(void)
 	TimerSet(period);
 	TimerOn();
 	srand (seed);
-	nokia_lcd_init();
+	lcdBegin();
 	
 	
 	
@@ -456,7 +446,7 @@ int main(void)
  //char ch;
     while (1) 
     {
-//nokia_lcd_clear();
+//clearDisplay();
 // 	enum Direction dir = determine_direction(0);
 // 	switch(dir){
 // 		case Up: ch = '1';
@@ -468,9 +458,9 @@ int main(void)
 // 		case Right: ch = '4';
 // 			break;	
 // 	}
-// 	nokia_lcd_set_cursor(0,0);
+// 	gotoXY(0,0);
 // 	nokia_lcd_write_char(ch,1);
-// 	nokia_lcd_render();
+// 	updateDisplay();
 		players[0].dir = determine_direction(0);
 		players[1].dir = determine_direction(1);
 		if(elapsedTime >= speed){
@@ -482,30 +472,30 @@ int main(void)
 		elapsedTime += period;
 
 
-// 		 nokia_lcd_clear();
-// 		 nokia_lcd_set_cursor(0,0);
-// 		 nokia_lcd_write_string("Vert1: ",1);
+// 		 clearDisplay();
+// 		 gotoXY(0,0);
+// 		 setStr("Vert1: ",1);
 // 		 
 // 		 sprintf(str1, "%d", vert[0]);
-// 		 nokia_lcd_write_string(str1,1);
+// 		 setStr(str1,1);
 // 		 
 // 		 sprintf(str2, "%d", horiz[0]);
-// 		 nokia_lcd_set_cursor(0,10);
-// 		 nokia_lcd_write_string("Horiz1: ",1);
-// 		 nokia_lcd_write_string(str2,1);
+// 		 gotoXY(0,10);
+// 		 setStr("Horiz1: ",1);
+// 		 setStr(str2,1);
 // 		 
 // 		 sprintf(str3, "%d", vert[1]);
-// 		 nokia_lcd_set_cursor(0,20);
-// 		 nokia_lcd_write_string("Vert2: ",1);
-// 		 nokia_lcd_write_string(str3,1);
+// 		 gotoXY(0,20);
+// 		 setStr("Vert2: ",1);
+// 		 setStr(str3,1);
 // 		 
 // 		 sprintf(str4, "%d", horiz[1]);
-// 		 nokia_lcd_set_cursor(0,30);
-// 		 nokia_lcd_write_string("Horiz2: ",1);
-// 		 nokia_lcd_write_string(str4,1);
+// 		 gotoXY(0,30);
+// 		 setStr("Horiz2: ",1);
+// 		 setStr(str4,1);
 // 		 
 // 		 
-// 		 nokia_lcd_render();
+// 		 updateDisplay();
     }
 }
 
