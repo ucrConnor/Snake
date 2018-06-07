@@ -19,8 +19,8 @@
 #define FIELD_HEIGHT PIXEL_HEIGHT/SEG_WIDTH
 #define FIELD_WIDTH PIXEL_WIDTH/SEG_WIDTH
 #define START_LENGTH 4
-#define MAX_LENGTH 10
-#define START_SPEED 80
+#define MAX_LENGTH 40
+#define START_SPEED 70
 #define UPPER_THRESHOLD 700 //Defines the deadzone for the joystick
 #define LOWER_THRESHOLD 400 
 
@@ -33,8 +33,8 @@ enum Field_Contents{Empty, Food, Obstacle, Player1, Player2, Player};
 enum bool{False, True};
 struct Segment{
 	//indicies of the segments position in the field
-	int x;
-	int y;
+	unsigned char x;
+	unsigned char y;
 };
 
 struct Snake{
@@ -59,7 +59,7 @@ struct Snake players[2];
 struct Segment food;
 unsigned char select1 = 0;
 unsigned char select2 = 0;
-unsigned char speed = 80;
+unsigned char speed = START_SPEED;
 unsigned char num_players = 1;
 unsigned char game_over_timer = 0;
 unsigned short seed = 0;
@@ -71,16 +71,16 @@ void update_seed(){
 	if(seed < SHRT_MAX)
 		++seed;
 	else
-		seed = rand() % SHRT_MAX;
+		seed = 0;
 }
 void generate_food(){
 	unsigned char food_x;
 	unsigned char food_y;
 	
 	do{
-		food_x = (rand() % (FIELD_WIDTH - 2) + 1);
-		food_y = (rand() % (FIELD_HEIGHT - 2) + 1);
-	}while(field[food_x][food_y].content == Player);
+		food_x = (rand() % (FIELD_WIDTH - 2)) + 1;
+		food_y = (rand() % (FIELD_HEIGHT - 2)) + 1;
+	}while(field[food_x][food_y].content != Empty);
 	field[food_x][food_y].content = Food;
 	food.x = food_x;
 	food.y = food_y;
@@ -97,18 +97,19 @@ void add_segment(unsigned char player){
 		++players[player].seg[length].x;
 	else if(last_dir == Up)
 		--players[player].seg[length].y;
-	else
+	else if(last_dir == Down)
 		++players[player].seg[length].y;
 	
 	field[players[player].seg[length].x][players[player].seg[length].y].dir = last_dir;
+	field[players[player].seg[length].x][players[player].seg[length].y].content = Player;
 	render_field();
 		
 }
 void eat(unsigned char player){
-	generate_food();
-	players[player].score++;
+	++players[player].score;
 	if(players[player].length < MAX_LENGTH)
 		add_segment(player);
+	generate_food();
 	if(speed > 10)
 		speed -= 5;
 	
@@ -116,14 +117,14 @@ void eat(unsigned char player){
 }
 void player_init(){
 	for (unsigned char i = 0; i < num_players; ++i){
-		players[i].dir = Right;
+		players[i].dir =  i == 0 ? Right : Left;
 		players[i].length = START_LENGTH;
 		players[i].collided = False;
 		players[i].score = 0;
 		for (unsigned char j = 0; j < START_LENGTH && j < MAX_LENGTH; ++j){
-			players[i].seg[j].x = 1 + START_LENGTH - j; /* first segment starts 1 + len to the right and build to the left
+			players[i].seg[j].x = i == 0 ? 1 + START_LENGTH - j : (FIELD_WIDTH - 1) - (START_LENGTH - j); /* first segment starts 1 + len to the right and build to the left
 												  so the last segment is 1 cell to the right of the wall*/
-			players[i].seg[j].y = i == 0 ? 2 : FIELD_HEIGHT - 2;
+			players[i].seg[j].y = i == 0 ? 2 : FIELD_HEIGHT - 3;
 																
 		}
 	}
@@ -138,8 +139,8 @@ void field_init(){
 	
 	for (unsigned char i = 0; i < num_players; ++i){	
 		for (unsigned char j = 0; players[i].length && j < MAX_LENGTH; ++j){
-			field[players[i].seg[j].x][players[i].seg[j].y].dir = Right;
-			field[players[i].seg[j].x][players[i].seg[j].y].content = i == 0 ? Player1 : Player2;														
+			field[players[i].seg[j].x][players[i].seg[j].y].dir = i == 0 ? Right : Left;
+			field[players[i].seg[j].x][players[i].seg[j].y].content = Player;														
 		}
 	}
 	generate_food();
@@ -162,7 +163,7 @@ void clear_segment(unsigned char x, unsigned char y){
 void render_field(){
 	for(unsigned char i = 1 ; i < FIELD_WIDTH - 1; ++i){
 		for (unsigned char j = 1; j < FIELD_HEIGHT - 1; ++j)
-			if(field[i][j].content == Player1 || field[i][j].content == Player2)
+			if(field[i][j].content == Empty)
 				clear_segment(i,j);
 			else if(field[i][j].content == Food)
 				draw_snake_segment(i,j);
@@ -170,7 +171,7 @@ void render_field(){
 				clear_segment(i,j);
 	}
 	for (unsigned char i = 0; i < num_players; ++i){
-		for (unsigned char j = 0; j < players[i].length && j < MAX_LENGTH; ++j){
+		for (unsigned char j = 0; j < players[i].length; ++j){
 			draw_snake_segment(players[i].seg[j].x,players[i].seg[j].y);	
 		}
 	}
@@ -240,7 +241,7 @@ void move_players(){
 		for(unsigned char j = 0; j < players[i].length; ++j){
 			move_segment(i, j, pos(i,j).dir);
 		}
-		field[players[i].seg[0].x][players[i].seg[0].x].content = i == 0 ? Player1 : Player2;
+		field[players[i].seg[0].x][players[i].seg[0].x].content = Player;
 	}
 	
 }
@@ -307,7 +308,7 @@ enum Field_Contents determine_collisions(){
 	unsigned char opposing_player;
 	for (unsigned char i = 0; i < num_players; ++i){		
 		//if(pos(i,0).content == Obstacle)
-		opposing_player = i == 0 ? 1 : 0;
+		
 		if((players[i].seg[0].x == 0 || players[i].seg[0].x == FIELD_WIDTH - 1)
 		 || (players[i].seg[0].y == 0 || players[i].seg[0].y == FIELD_HEIGHT - 1)){
 			players[i].collided = True;
@@ -315,11 +316,20 @@ enum Field_Contents determine_collisions(){
 		if(players[i].seg[0].x == food.x && players[i].seg[0].y == food.y){
 			eat(i);
 		}
-		for(unsigned char j = 0; j < players[i].length; ++j){
-			if((players[i].seg[0].x == players[opposing_player].seg[j].x) && (players[i].seg[0].y == players[opposing_player].seg[j].y)){
-				players[i].collided = True;
-			}	
+		if(num_players == 2){
+			opposing_player = i == 0 ? 1 : 0;
+			for(unsigned char j = 0; j < players[i].length; ++j){
+				if((players[i].seg[0].x == players[opposing_player].seg[j].x) && (players[i].seg[0].y == players[opposing_player].seg[j].y)){
+					players[i].collided = True;
+				}
+			}
 		}
+		for(unsigned char j = 1; j < players[i].length; ++j){
+			if((players[i].seg[0].x == players[i].seg[j].x) && (players[i].seg[0].y == players[i].seg[j].y)){
+				players[i].collided = True;
+			}
+		}
+		
 	}	
 	if(players[0].collided == True || players[1].collided == True)
 		return Obstacle;
@@ -393,6 +403,8 @@ void Tick(){
 	
 	switch (state){
 		case Start: num_players = 1;
+					game_over_timer = 0;
+					speed = START_SPEED;
 			break;
 		case Init: nokia_lcd_clear();
 				   speed = START_SPEED;
@@ -459,8 +471,8 @@ int main(void)
 // 	nokia_lcd_set_cursor(0,0);
 // 	nokia_lcd_write_char(ch,1);
 // 	nokia_lcd_render();
-// 		players[0].dir = determine_direction(0);
-// 		players[1].dir = determine_direction(1);
+		players[0].dir = determine_direction(0);
+		players[1].dir = determine_direction(1);
 		if(elapsedTime >= speed){
 			Tick();
 			elapsedTime = 0;
