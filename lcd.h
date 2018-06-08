@@ -15,7 +15,6 @@ The above copyright notice and this permission notice shall be included in all c
 #define LCD_H
 
 #include <avr/pgmspace.h>
-#include <util/delay.h>
 
 void  SetBit(unsigned char x, unsigned char k, unsigned char b) {
 	PORTC = (b ? PORTC | (0x01 << k) : PORTC & ~(0x01 << k));
@@ -31,45 +30,15 @@ Code in this comment block was adapted for ATMEGA 1284 from code given by SparkF
 #define PIN_SCLK  PC7
 
 
-#define LOW		  0
-#define HIGH	  1
+#define LOW	 0
+#define HIGH 1
 
-#define LCD_COMMAND     LOW
-#define LCD_DATA     HIGH
+#define LCD_COMMAND LOW
+#define LCD_DATA    HIGH
 
-#define LCD_WIDTH     84
-#define LCD_HEIGHT     48
+#define LCD_WIDTH  84
+#define LCD_HEIGHT 48
 
-
-void shiftOut(unsigned char dataPin, unsigned char clockPin, unsigned char val)
-{
-	unsigned char i;
-
-// 	for (i = 0; i < 8; i++)  {
-// 		//if (bitOrder == LSBFIRST)
-// 		//writeC(dataPin, !!(val & (1 << i)));
-// 		//else
-// 		SetBit(PORTC,dataPin, !!(val & (1 << (7 - i))));
-// 
-// 		SetBit(PORTC,clockPin, HIGH);
-// 		SetBit(PORTC, clockPin, LOW);
-// 	}
-
-
-	for (i = 0; i < 8; i++)  {
-		//if (bitOrder == LSBFIRST)
-		//writeC(dataPin, !!(val & (1 << i)));
-		//else
-		if ((val >> (7-i)) & 0x01)
-			SetBit(PORTC, PIN_SDIN, HIGH);
-		else
-			SetBit(PORTC, PIN_SDIN, LOW);
-
-		SetBit(PORTC,clockPin, HIGH);
-		SetBit(PORTC, clockPin, LOW);
-	}
-
-}
 
 static const unsigned char ASCII[][5] PROGMEM = {
 	// First 32 characters (0x00-0x19) are ignored. These are
@@ -234,13 +203,13 @@ unsigned char displayMap[LCD_WIDTH * LCD_HEIGHT / 8] = {
 void LCDWrite(unsigned char data_or_command, unsigned char data)
 {
 
-	
 	//Send the data
 	SetBit(PORTC, PIN_SCE, LOW);
 	//Tell the LCD that we are writing either to data or a command
 	SetBit(PORTC, PIN_DC, data_or_command);
 	
 	unsigned char i;
+	//Shift out the data to be written highest bit first
 	for (i = 0; i < 8; i++)  {
 			
 		if ((data >> (7-i)) & 0x01)
@@ -277,17 +246,6 @@ void setPixel(int x, int y, unsigned char bw)
 		displayMap[x + (y/8)*LCD_WIDTH] &= ~(1<<shift);
 	}
 }
-
-// Because I keep forgetting to put bw variable in when setting...
-// void setPixel(int x, int y)
-// {
-// 	setPixel(x, y, HIGH); // Call setPixel with bw set to HIGH
-// }
-// 
-// void clearPixel(int x, int y)
-// {
-// 	setPixel(x, y, LOW); // call setPixel with bw set to LOW
-// }
 
 void setChar(char character, int x, int y, unsigned char bw)
 {
@@ -357,9 +315,6 @@ void updateDisplay()
 
 void lcdBegin(void)
 {
-
-
-
 	//Reset the LCD to a known state
 	SetBit(PORTC, PIN_RESET, HIGH);
 	SetBit(PORTC, PIN_SCE, HIGH);
@@ -368,7 +323,7 @@ void lcdBegin(void)
 	//_delay_ms(70);
 	SetBit(PORTC, PIN_RESET, HIGH);
 
-SetBit(PORTC, PIN_SCE, LOW);
+	SetBit(PORTC, PIN_SCE, LOW);
 
 	LCDWrite(LCD_COMMAND, 0x21); //Tell LCD extended commands follow
 	LCDWrite(LCD_COMMAND, 0xC2); //Set LCD Vop (Contrast)
